@@ -10,7 +10,7 @@ services:
     ports:
       # Standard: nur lokal erreichbar. Für das LAN "127.0.0.1:" entfernen.
       - "127.0.0.1:8080:8080"   # HTTP/HTTPS-Proxy
-      - "127.0.0.1:8000:8000"   # Dashboard
+      - "173.1.1.2:8000:8000"   # Dashboard
     volumes:
       - proxy-data:/data
 
