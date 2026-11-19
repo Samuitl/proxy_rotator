@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Proxy-Rotator</title>
+<style>
+  :root {
+    --bg:#0e1116; --panel:#161b22; --panel2:#1c222b; --line:#262d37; --text:#e6edf3; --muted:#8b949e;
+    --accent:#3fb68b; --accent2:#2f81f7; --warn:#d29922; --bad:#e5534b; --elite:#a371f7;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:14px/1.45 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; }
+  code, .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size:12.5px; }
+  header { display:flex; align-items:center; gap:18px; padding:12px 22px; border-bottom:1px solid var(--line);
+           background:var(--panel); position:sticky; top:0; z-index:5; flex-wrap:wrap; }
+  header h1 { font-size:16px; margin:0; display:flex; align-items:center; gap:8px; }
+  .dot { width:9px; height:9px; border-radius:50%; background:var(--accent); box-shadow:0 0 8px var(--accent); }
+  nav { display:flex; gap:4px; flex-wrap:wrap; }
+  nav button { background:none; border:0; color:var(--muted); padding:7px 12px; border-radius:7px; cursor:pointer; font-size:14px; }
+  nav button.on, nav button:hover { color:var(--text); background:var(--panel2); }
+  header .right { margin-left:auto; display:flex; gap:12px; align-items:center; color:var(--muted); font-size:13px; }
+  a { color:var(--accent2); }
+  main { padding:22px; max-width:1400px; margin:0 auto; }
+  section { display:none; } section.on { display:block; }
+  .grid { display:grid; gap:14px; }
+  .kpis { grid-template-columns:repeat(auto-fit, minmax(160px,1fr)); }
+  .two { grid-template-columns:2fr 1fr; } @media (max-width:900px){ .two { grid-template-columns:1fr; } }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:16px; min-width:0; }
+  .card h3 { margin:0 0 12px; font-size:13px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; }
+  .kpi .v { font-size:26px; font-weight:650; font-variant-numeric:tabular-nums; }
+  .kpi .l { color:var(--muted); font-size:12.5px; }
+  .kpi .s { color:var(--muted); font-size:12px; margin-top:2px; }
+  .row { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+  .mt { margin-top:14px; }
+  button.b, .b { background:var(--panel2); color:var(--text); border:1px solid var(--line); padding:7px 12px; border-radius:7px;
+                 cursor:pointer; font-size:13px; text-decoration:none; display:inline-block; }
+  button.b:hover, .b:hover { border-color:var(--muted); }
+  button.primary { background:var(--accent); color:#06130d; border-color:var(--accent); font-weight:600; }
+  button.danger { color:var(--bad); }
+  button.sm { padding:3px 8px; font-size:12px; }
+  input, select, textarea { background:var(--bg); color:var(--text); border:1px solid var(--line); border-radius:7px; padding:7px 9px; font-size:13px; }
+  textarea { width:100%; font-family:ui-monospace, Menlo, monospace; font-size:12.5px; }
+  label.f { display:flex; flex-direction:column; gap:4px; font-size:12.5px; color:var(--muted); }
+  label.f input, label.f select { color:var(--text); }
+  .form { display:grid; grid-template-columns:repeat(auto-fill, minmax(230px,1fr)); gap:14px; }
+  .hint { color:var(--muted); font-size:12px; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th, td { text-align:left; padding:7px 8px; border-bottom:1px solid var(--line); white-space:nowrap; }
+  th { color:var(--muted); font-weight:600; font-size:12px; position:sticky; top:0; background:var(--panel); }
+  td.wrap { white-space:normal; word-break:break-all; }
+  tbody tr:hover { background:var(--panel2); }
+  .tablewrap { overflow:auto; max-height:70vh; }
+  .badge { display:inline-block; padding:1px 7px; border-radius:20px; font-size:11.5px; font-weight:600; border:1px solid transparent; }
+  .b-elite { color:var(--elite); border-color:#a371f755; } .b-anonymous { color:var(--accent2); border-color:#2f81f755; }
+  .b-transparent { color:var(--warn); border-color:#d2992255; }
+  .b-alive { color:var(--accent); border-color:#3fb68b55; } .b-new { color:var(--muted); border-color:var(--line); }
+  .b-dead { color:var(--bad); border-color:#e5534b55; }
+  .b-ok { color:var(--accent); } .b-fail, .b-no_proxy { color:var(--bad); }
+  .bars .bar { display:grid; grid-template-columns:150px 1fr 54px; gap:8px; align-items:center; padding:3px 0; cursor:pointer; font-size:13px; }
+  .bars .bar:hover .lbl { color:var(--accent2); }
+  .bars .track { height:9px; background:var(--panel2); border-radius:5px; overflow:hidden; display:flex; }
+  .bars .fill { height:100%; background:var(--accent2); } .bars .fill.e { background:var(--elite); }
+  .bars .n { text-align:right; font-variant-numeric:tabular-nums; color:var(--muted); }
+  .lbl { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .legend { display:flex; gap:14px; font-size:12px; color:var(--muted); margin-top:6px; }
+  .legend i { display:inline-block; width:10px; height:10px; border-radius:2px; margin-right:5px; vertical-align:-1px; }
+  .kv { display:grid; grid-template-columns:auto 1fr; gap:6px 14px; font-size:13px; }
+  .kv div:nth-child(odd) { color:var(--muted); }
+  pre.use { background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:12px; overflow:auto; margin:0; font-size:12.5px; line-height:1.6; }
+  .toast { position:fixed; bottom:20px; right:20px; background:var(--panel2); border:1px solid var(--line); padding:10px 14px;
+           border-radius:8px; opacity:0; transition:opacity .2s; pointer-events:none; z-index:10; }
+  .toast.show { opacity:1; }
+  .progress { height:6px; background:var(--panel2); border-radius:4px; overflow:hidden; margin-top:6px; }
+  .progress div { height:100%; background:var(--accent); transition:width .4s; }
+  .err { color:var(--bad); }
+  .pager { display:flex; gap:8px; align-items:center; justify-content:flex-end; margin-top:10px; color:var(--muted); font-size:12.5px; }
+</style>
+</head>
+<body>
+<header>
+  <h1><span class="dot"></span>Proxy-Rotator</h1>
+  <nav id="nav">
+    <button data-t="overview" class="on">Übersicht</button>
+    <button data-t="proxies">Proxys</button>
+    <button data-t="sources">Quellen</button>
+    <button data-t="settings">Einstellungen</button>
+    <button data-t="log">Anfragen-Log</button>
+  </nav>
+  <div class="right"><span id="hdrStatus"></span><a href="/logout">Abmelden</a></div>
+</header>
+
+<main>
+<!-- ÜBERSICHT -->
+<section id="overview" class="on">
+  <div class="grid kpis">
+    <div class="card kpi"><div class="l">Nutzbar (HTTP / HTTPS)</div><div class="v" id="kUsable">–</div><div class="s" id="kUsableS"></div></div>
+    <div class="card kpi"><div class="l">Aktiv gesamt</div><div class="v" id="kAlive">–</div><div class="s" id="kAliveS"></div></div>
+    <div class="card kpi"><div class="l">Warteschlange (neu)</div><div class="v" id="kNew">–</div><div class="s" id="kNewS"></div></div>
+    <div class="card kpi"><div class="l">Anfragen</div><div class="v" id="kReq">–</div><div class="s" id="kReqS"></div></div>
+    <div class="card kpi"><div class="l">Traffic</div><div class="v" id="kBytes">–</div><div class="s" id="kBytesS"></div></div>
+  </div>
+
+  <div class="grid two mt">
+    <div class="card">
+      <h3>Anfragen pro Minute (letzte Stunde)</h3>
+      <svg id="chart" width="100%" height="150" preserveAspectRatio="none"></svg>
+      <div class="legend"><span><i style="background:var(--accent)"></i>Erfolgreich</span><span><i style="background:var(--bad)"></i>Fehlgeschlagen</span></div>
+    </div>
+    <div class="card">
+      <h3>Status</h3>
+      <div class="kv" id="statusKv"></div>
+      <div id="checkProg" class="mt"></div>
+      <div class="row mt">
+        <button class="b primary" onclick="act('scrape')">Jetzt scrapen</button>
+        <button class="b" onclick="act('recheck')">Aktive neu prüfen</button>
+        <button class="b" onclick="act('retry-dead')">Tote erneut testen</button>
+        <button class="b danger" onclick="act('purge-dead')">Tote löschen</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid two mt">
+    <div class="card">
+      <h3>Länder (aktive Proxys)</h3>
+      <div class="bars" id="countryBars"></div>
+      <div class="legend"><span><i style="background:var(--accent2)"></i>Anonymous</span><span><i style="background:var(--elite)"></i>Elite</span><span>Klick filtert die Proxy-Liste</span></div>
+    </div>
+    <div class="grid" style="align-content:start">
+      <div class="card"><h3>Anonymität</h3><div class="bars" id="anonBars"></div></div>
+      <div class="card"><h3>Protokolle</h3><div class="bars" id="protoBars"></div></div>
+    </div>
+  </div>
+
+  <div class="card mt">
+    <h3>Verwendung</h3>
+    <pre class="use" id="usage"></pre>
+  </div>
+</section>
+
+<!-- PROXYS -->
+<section id="proxies">
+  <div class="card">
+    <div class="row">
+      <select id="fStatus"><option value="alive">Aktiv</option><option value="new">Neu</option><option value="dead">Tot</option><option value="">Alle Status</option></select>
+      <select id="fCountry"><option value="">Alle Länder</option></select>
+      <select id="fProto"><option value="">Alle Protokolle</option><option>http</option><option>socks4</option><option>socks5</option></select>
+      <select id="fAnon"><option value="">Jede Anonymität</option><option value="elite">Elite</option><option value="anonymous">Anonymous</option><option value="transparent">Transparent</option></select>
+      <label class="row hint"><input type="checkbox" id="fHttps"> nur HTTPS-fähig</label>
+      <input id="fQ" placeholder="IP suchen…" style="width:140px">
+      <select id="fSort"><option value="latency">Sortierung: Latenz</option><option value="checked">Zuletzt geprüft</option><option value="seen">Neueste</option><option value="country">Land</option><option value="success">Meiste Erfolge</option></select>
+      <span style="margin-left:auto" class="row">
+        <button class="b" onclick="loadProxies(0)">Aktualisieren</button>
+        <button class="b" onclick="exportList()">Exportieren (.txt)</button>
+      </span>
+    </div>
+    <div class="tablewrap mt">
+      <table>
+        <thead><tr><th>Status</th><th>Proxy</th><th>Typ</th><th>Anonymität</th><th>Land</th><th>Exit-IP</th><th>Latenz</th><th>HTTPS</th><th>Traffic ok/fehl</th><th>Geprüft</th><th></th></tr></thead>
+        <tbody id="pBody"></tbody>
+      </table>
+    </div>
+    <div class="pager"><span id="pInfo"></span><button class="b sm" onclick="page(-1)">‹ Zurück</button><button class="b sm" onclick="page(1)">Weiter ›</button></div>
+  </div>
+</section>
+
+<!-- QUELLEN -->
+<section id="sources">
+  <div class="card">
+    <h3>Neue Quelle</h3>
+    <div class="row">
+      <input id="sUrl" placeholder="https://… (Textliste ip:port oder HTML-Tabelle)" style="flex:1; min-width:280px">
+      <select id="sProto"><option>http</option><option>socks4</option><option>socks5</option></select>
+      <button class="b primary" onclick="addSource()">Hinzufügen</button>
+      <button class="b" onclick="act('scrape')">Alle jetzt scrapen</button>
+    </div>
+    <div class="hint mt">Erkannt werden <code>ip:port</code>, <code>socks5://ip:port</code> und HTML-Tabellen mit IP- und Port-Spalten. Ein Schema in der Zeile überschreibt das Protokoll der Quelle.</div>
+  </div>
+  <div class="card mt">
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Aktiv</th><th>URL</th><th>Protokoll</th><th>Zuletzt</th><th>Gefunden</th><th>Fehler</th><th></th></tr></thead>
+        <tbody id="sBody"></tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- EINSTELLUNGEN -->
+<section id="settings">
+  <div class="card">
+    <h3>Rotation</h3>
+    <div class="form">
+      <label class="f">Modus<select data-k="rotation_mode"><option value="request">Pro Anfrage</option><option value="time">Zeitbasiert</option><option value="sticky">Sticky pro Client/Session</option></select></label>
+      <label class="f">Intervall zeitbasiert (Sek.)<input type="number" data-k="rotation_interval_s" min="1"></label>
+      <label class="f">Sticky-Dauer (Sek.)<input type="number" data-k="sticky_ttl_s" min="1"></label>
+      <label class="f">Weitere Versuche bei Fehler<input type="number" data-k="max_retries" min="0"></label>
+      <label class="f">Verbindungs-Timeout (Sek.)<input type="number" data-k="connect_timeout_s" min="1"></label>
+      <label class="f">Antwort-Timeout (Sek.)<input type="number" data-k="response_timeout_s" min="1"></label>
+    </div>
+    <div class="row mt"><button class="b" onclick="act('reset-sessions')">Sticky-/Zeit-Zuordnungen zurücksetzen</button></div>
+  </div>
+  <div class="card mt">
+    <h3>Standard-Filter (pro Anfrage überschreibbar)</h3>
+    <div class="form">
+      <label class="f">Nur Länder (leer = alle)<input data-k="default_countries" data-type="list" placeholder="DE, AT, CH"></label>
+      <label class="f">Länder ausschließen<input data-k="exclude_countries" data-type="list" placeholder="CN, RU"></label>
+      <label class="f">Mindest-Anonymität<select data-k="min_anonymity"><option value="anonymous">Anonymous + Elite</option><option value="elite">Nur Elite</option><option value="transparent">Alle (unsicher – echte IP sichtbar)</option></select></label>
+      <label class="f">Max. Latenz ms (0 = egal)<input type="number" data-k="max_latency_ms" min="0"></label>
+      <label class="f">Upstream-Protokolle
+        <span class="row" id="protoChecks">
+          <label class="row"><input type="checkbox" value="http"> http</label>
+          <label class="row"><input type="checkbox" value="socks4"> socks4</label>
+          <label class="row"><input type="checkbox" value="socks5"> socks5</label>
+        </span></label>
+    </div>
+  </div>
+  <div class="card mt">
+    <h3>Scraper &amp; Checker</h3>
+    <div class="form">
+      <label class="f">Scrape-Intervall (Min.)<input type="number" data-k="scrape_interval_min" min="1"></label>
+      <label class="f">Aktive neu prüfen alle (Min.)<input type="number" data-k="recheck_interval_min" min="1"></label>
+      <label class="f">Parallele Prüfungen<input type="number" data-k="check_concurrency" min="1"></label>
+      <label class="f">Prüf-Timeout (Sek.)<input type="number" data-k="check_timeout_s" min="1"></label>
+      <label class="f">Tot nach Fehlern in Folge<input type="number" data-k="dead_after_fails" min="1"></label>
+      <label class="f">Tote löschen nach (Std.)<input type="number" data-k="purge_dead_after_h" min="1"></label>
+      <label class="f">HTTPS-Test-URL<input data-k="https_test_url"></label>
+    </div>
+    <label class="f mt">IP-Checker (Judges) – eine pro Zeile: <code>typ url</code>, Typen: httpbin, azenv, ip
+      <textarea id="judges" rows="4"></textarea></label>
+  </div>
+  <div class="row mt"><button class="b primary" onclick="saveSettings()">Speichern</button><span id="setErr" class="err"></span></div>
+</section>
+
+<!-- LOG -->
+<section id="log">
+  <div class="card">
+    <div class="row"><h3 style="margin:0">Letzte Anfragen über den Proxy</h3><span class="hint" style="margin-left:auto">aktualisiert alle 5 s</span></div>
+    <div class="tablewrap mt">
+      <table>
+        <thead><tr><th>Zeit</th><th>Client</th><th>Methode</th><th>Ziel</th><th>Upstream</th><th>Land</th><th>Versuche</th><th>Dauer</th><th>↑ / ↓</th><th>Ergebnis</th></tr></thead>
+        <tbody id="lBody"></tbody>
+      </table>
+    </div>
+  </div>
+</section>
+</main>
+<div class="toast" id="toast"></div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const flag = (cc) => (!cc || cc === 'ZZ') ? '🌐' : String.fromCodePoint(...[...cc.toUpperCase()].map(c => 0x1F1A5 + c.charCodeAt(0)));
+const num = (n) => (n ?? 0).toLocaleString('de-DE');
+const bytes = (b) => { b = b || 0; const u = ['B','KB','MB','GB','TB']; let i = 0; while (b >= 1024 && i < 4) { b /= 1024; i++; } return b.toFixed(i ? 1 : 0) + ' ' + u[i]; };
+const ago = (ts) => { if (!ts) return '–'; const s = Math.round(Date.now()/1000 - ts); if (s < 0) return 'in ' + dur(-s); return 'vor ' + dur(s); };
+const dur = (s) => s < 60 ? s + ' s' : s < 3600 ? Math.round(s/60) + ' min' : s < 86400 ? (s/3600).toFixed(1) + ' h' : (s/86400).toFixed(1) + ' d';
+const ANON_DE = { elite:'Elite', anonymous:'Anonymous', transparent:'Transparent' };
+const STATUS_DE = { alive:'aktiv', new:'neu', dead:'tot' };
+let toastT;
+function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 2500); }
+
+async function api(path, opts = {}) {
+  opts.headers = Object.assign({ 'X-Requested-With': 'dashboard' }, opts.body ? { 'Content-Type': 'application/json' } : {}, opts.headers || {});
+  const r = await fetch(path, opts);
+  if (r.status === 401) { location.href = '/login'; throw new Error('401'); }
+  const ct = r.headers.get('content-type') || '';
+  const data = ct.includes('json') ? await r.json() : await r.text();
+  if (!r.ok) throw Object.assign(new Error(data.error || 'Fehler'), { data });
+  return data;
+}
+
+// Tabs
+let current = 'overview';
+document.querySelectorAll('#nav button').forEach(b => b.onclick = () => show(b.dataset.t));
+function show(t) {
+  current = t;
+  document.querySelectorAll('#nav button').forEach(b => b.classList.toggle('on', b.dataset.t === t));
+  document.querySelectorAll('main section').forEach(s => s.classList.toggle('on', s.id === t));
+  ({ overview: loadStats, proxies: () => loadProxies(0), sources: loadSources, settings: loadSettings, log: loadLog })[t]();
+}
+
+// Übersicht
+let lastStats = null;
+function bars(el, rows, opts = {}) {
+  const max = Math.max(1, ...rows.map(r => r.n));
+  el.innerHTML = rows.map(r => {
+    const w = r.n / max * 100, we = opts.elite ? (r.elite || 0) / max * 100 : 0;
+    return `<div class="bar" data-v="${esc(r.key)}"><span class="lbl">${r.label}</span>
+      <span class="track">${opts.elite ? `<span class="fill e" style="width:${we}%"></span>` : ''}<span class="fill" style="width:${w - we}%"></span></span>
+      <span class="n">${num(r.n)}</span></div>`;
+  }).join('') || '<div class="hint">Noch keine aktiven Proxys – der Checker arbeitet im Hintergrund.</div>';
+  if (opts.click) el.querySelectorAll('.bar').forEach(b => b.onclick = () => opts.click(b.dataset.v));
+}
+
+function chart(series) {
+  const svg = $('chart'), W = svg.clientWidth || 600, H = 150, n = series.length;
+  const max = Math.max(1, ...series.map(s => s.ok + s.fail));
+  const bw = W / n;
+  let html = '';
+  series.forEach((s, i) => {
+    const ho = s.ok / max * (H - 20), hf = s.fail / max * (H - 20), x = i * bw + 1;
+    html += `<rect x="${x}" y="${H - ho}" width="${Math.max(1, bw - 2)}" height="${ho}" fill="var(--accent)" rx="1"><title>${s.ok} ok / ${s.fail} fehl</title></rect>`;
+    html += `<rect x="${x}" y="${H - ho - hf}" width="${Math.max(1, bw - 2)}" height="${hf}" fill="var(--bad)" rx="1"></rect>`;
+  });
+  html += `<text x="4" y="12" fill="var(--muted)" font-size="11">max ${max}/min</text>`;
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  svg.innerHTML = html;
+}
+
+async function loadStats() {
+  const s = lastStats = await api('/api/stats');
+  const c = s.counts, t = s.traffic;
+  $('kUsable').textContent = `${num(s.usable.http)} / ${num(s.usable.https)}`;
+  $('kUsableS').textContent = 'erfüllen die aktuellen Filter';
+  $('kAlive').textContent = num(c.alive);
+  $('kAliveS').textContent = `${num(c.total)} bekannt · ${num(c.dead)} tot`;
+  $('kNew').textContent = num(c.new);
+  $('kNewS').textContent = s.checker.running ? 'Checker läuft' : 'Checker wartet';
+  $('kReq').textContent = num(t.total);
+  $('kReqS').textContent = `${t.total ? Math.round(t.ok / t.total * 100) : 0} % erfolgreich · ${t.active} offen`;
+  $('kBytes').textContent = bytes(t.bytes_down);
+  $('kBytesS').textContent = `↑ ${bytes(t.bytes_up)} gesendet`;
+  $('hdrStatus').textContent = `${num(c.alive)} aktiv · Modus: ${({request:'pro Anfrage', time:'zeitbasiert', sticky:'sticky'})[s.rotation_mode]}`;
+  chart(t.series);
+
+  const sc = s.scraper, ck = s.checker;
+  $('statusKv').innerHTML = [
+    ['Eigene IP', ck.real_ip ? `<span class="mono">${esc(ck.real_ip)}</span>` : '<span class="err">unbekannt</span>'],
+    ['Proxy-Port', `<span class="mono">${s.proxy_port}</span> · Login ${s.proxy_auth ? 'an' : '<span class="err">aus</span>'}`],
+    ['Letzter Scrape', sc.running ? 'läuft…' : `${ago(sc.last_run)} · ${num(sc.last_found)} gefunden, ${num(sc.last_new)} neu`],
+    ['Nächster Scrape', ago(sc.next_run)],
+    ['Quellen', `${s.sources.enabled} aktiv${s.sources.errors ? ` · <span class="err">${s.sources.errors} mit Fehler</span>` : ''}`],
+    ['Geprüft (seit Start)', num(ck.checked_total)],
+    ['Länder-Lookup', ck.geo_busy ? 'läuft…' : ck.geo_error ? `<span class="err">${esc(ck.geo_error)}</span>` : 'ok'],
+    ['Sticky-Sessions', num(s.pool.sticky_sessions)],
+    ['Laufzeit', dur(Math.round(s.uptime))],
+  ].map(([k, v]) => `<div>${k}</div><div>${v}</div>`).join('');
+  $('checkProg').innerHTML = ck.running && ck.batch ? `<div class="hint">Prüfe ${num(ck.done)} / ${num(ck.batch)} · ${num(ck.alive_found)} funktionieren</div>
+      <div class="progress"><div style="width:${ck.done / ck.batch * 100}%"></div></div>` : '';
+
+  bars($('countryBars'), s.countries.slice(0, 25).map(r => ({ key: r.code, n: r.n, elite: r.elite,
+        label: `${flag(r.code)} ${esc(r.name)} <span class="hint">${r.code}</span>` })),
+       { elite: true, click: (v) => { $('fCountry').value = v; $('fStatus').value = 'alive'; show('proxies'); } });
+  bars($('anonBars'), s.anonymity.map(r => ({ key: r.k, n: r.n, label: `<span class="badge b-${r.k}">${ANON_DE[r.k] || r.k}</span>` })),
+       { click: (v) => { $('fAnon').value = v; $('fStatus').value = 'alive'; show('proxies'); } });
+  bars($('protoBars'), s.protocols.map(r => ({ key: r.k, n: r.n, label: esc(r.k) })),
+       { click: (v) => { $('fProto').value = v; $('fStatus').value = 'alive'; show('proxies'); } });
+
+  const sel = $('fCountry'), val = sel.value;
+  sel.innerHTML = '<option value="">Alle Länder</option>' + s.countries.map(r => `<option value="${r.code}">${flag(r.code)} ${esc(r.name)} (${r.n})</option>`).join('');
+  sel.value = val;
+
+  const host = location.hostname, auth = s.proxy_auth ? ':PASSWORT' : ':x';
+  $('usage').textContent =
+`# Standard (Filter & Rotationsmodus aus den Einstellungen)
+curl -x http://${host}:${s.proxy_port} ${s.proxy_auth ? '-U user:PASSWORT ' : ''}https://api.ipify.org
+
+# Land pro Anfrage wählen (mehrere mit _ trennen), Benutzername steuert die Optionen
+curl -x http://country-de_at${auth}@${host}:${s.proxy_port} https://api.ipify.org
+
+# Sticky-Session: gleiche Session-ID = gleicher Proxy
+curl -x http://country-us-session-meinjob${auth}@${host}:${s.proxy_port} https://api.ipify.org
+
+# Weitere Optionen: rotate-request|time|sticky, anon-elite, proto-socks5, country-any
+curl -x http://rotate-time-anon-elite-proto-socks5${auth}@${host}:${s.proxy_port} https://api.ipify.org
+
+# Alternativ per Proxy-Header statt Benutzername
+curl -x http://${host}:${s.proxy_port} --proxy-header 'X-Proxy-Country: DE' https://api.ipify.org`;
+}
+
+async function act(a) {
+  if (a === 'purge-dead' && !confirmBox('Alle toten Proxys löschen?')) return;
+  const r = await api('/api/actions/' + a, { method: 'POST' });
+  toast({ scrape: 'Scrape gestartet', recheck: 'Neuprüfung gestartet', 'retry-dead': `${r.count} Proxys erneut in der Warteschlange`,
+          'purge-dead': `${r.count} gelöscht`, 'reset-sessions': 'Zuordnungen zurückgesetzt' }[a] || 'OK');
+  setTimeout(() => current === 'overview' ? loadStats() : current === 'sources' ? loadSources() : null, 800);
+}
+function confirmBox(msg) { return window.confirm(msg); }
+
+// Proxys
+let pOffset = 0, pTotal = 0; const PLIM = 100;
+function proxyQuery() {
+  const q = new URLSearchParams({ status: $('fStatus').value, country: $('fCountry').value, protocol: $('fProto').value,
+    anonymity: $('fAnon').value, https: $('fHttps').checked ? '1' : '', q: $('fQ').value.trim(), sort: $('fSort').value });
+  [...q.keys()].forEach(k => { if (!q.get(k)) q.delete(k); });
+  return q;
+}
+async function loadProxies(off = pOffset) {
+  pOffset = Math.max(0, off);
+  const q = proxyQuery(); q.set('limit', PLIM); q.set('offset', pOffset);
+  const d = await api('/api/proxies?' + q);
+  pTotal = d.total;
+  $('pInfo').textContent = d.total ? `${num(pOffset + 1)}–${num(Math.min(pOffset + PLIM, d.total))} von ${num(d.total)}` : 'Keine Treffer';
+  $('pBody').innerHTML = d.items.map(p => `<tr>
+    <td><span class="badge b-${p.status}">${STATUS_DE[p.status]}</span></td>
+    <td class="mono">${esc(p.host)}:${p.port}</td>
+    <td>${esc(p.protocol)}</td>
+    <td>${p.anonymity ? `<span class="badge b-${p.anonymity}">${ANON_DE[p.anonymity]}</span>` : '–'}</td>
+    <td>${p.country_code ? `${flag(p.country_code)} ${esc(p.country || p.country_code)}` : '–'}</td>
+    <td class="mono">${esc(p.exit_ip || '–')}</td>
+    <td>${p.latency_ms ? Math.round(p.latency_ms) + ' ms' : '–'}</td>
+    <td>${p.status === 'alive' ? (p.https ? '✓' : '–') : ''}</td>
+    <td>${p.req_ok} / ${p.req_fail}</td>
+    <td title="${p.checks_ok}/${p.checks_total} Prüfungen ok">${ago(p.last_checked)}</td>
+    <td class="row" style="flex-wrap:nowrap"><button class="b sm" onclick="testProxy(${p.id}, this)">Testen</button><button class="b sm danger" onclick="delProxy(${p.id})">✕</button></td>
+  </tr>`).join('');
+}
+function page(d) { const n = pOffset + d * PLIM; if (n >= 0 && n < pTotal) loadProxies(n); }
+['fStatus','fCountry','fProto','fAnon','fHttps','fSort'].forEach(id => $(id).addEventListener('change', () => loadProxies(0)));
+let qT; $('fQ').addEventListener('input', () => { clearTimeout(qT); qT = setTimeout(() => loadProxies(0), 300); });
+async function testProxy(id, btn) {
+  btn.disabled = true; btn.textContent = '…';
+  try {
+    const r = await api(`/api/proxies/${id}`, { method: 'POST' });
+    toast(r.result.ok ? `OK · ${ANON_DE[r.result.anonymity]} · ${Math.round(r.result.latency_ms)} ms · HTTPS ${r.result.https ? 'ja' : 'nein'}` : `Fehlgeschlagen (${r.result.error})`);
+  } finally { loadProxies(); }
+}
+async function delProxy(id) { await api(`/api/proxies/${id}`, { method: 'DELETE' }); loadProxies(); }
+async function exportList() {
+  const txt = await api('/api/export?' + proxyQuery());
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([txt], { type: 'text/plain' }));
+  a.download = 'proxies.txt'; a.click(); URL.revokeObjectURL(a.href);
+}
+
+// Quellen
+async function loadSources() {
+  const rows = await api('/api/sources');
+  $('sBody').innerHTML = rows.map(s => `<tr>
+    <td><input type="checkbox" ${s.enabled ? 'checked' : ''} onchange="patchSource(${s.id}, {enabled: this.checked})"></td>
+    <td class="wrap mono"><a href="${esc(s.url)}" target="_blank" rel="noopener noreferrer">${esc(s.url)}</a></td>
+    <td><select onchange="patchSource(${s.id}, {protocol: this.value})">${['http','socks4','socks5'].map(p => `<option ${p === s.protocol ? 'selected' : ''}>${p}</option>`).join('')}</select></td>
+    <td>${ago(s.last_fetch)}</td>
+    <td>${s.last_count == null ? '–' : num(s.last_count)}</td>
+    <td class="wrap err" style="max-width:260px">${esc(s.last_error || '')}</td>
+    <td><button class="b sm danger" onclick="delSource(${s.id})">✕</button></td>
+  </tr>`).join('');
+}
+async function addSource() {
+  try { await api('/api/sources', { method: 'POST', body: JSON.stringify({ url: $('sUrl').value.trim(), protocol: $('sProto').value }) });
+        $('sUrl').value = ''; loadSources(); toast('Quelle hinzugefügt'); }
+  catch (e) { toast(e.message); }
+}
+async function patchSource(id, data) { await api(`/api/sources/${id}`, { method: 'PATCH', body: JSON.stringify(data) }); toast('Gespeichert'); }
+async function delSource(id) { await api(`/api/sources/${id}`, { method: 'DELETE' }); loadSources(); }
+
+// Einstellungen
+async function loadSettings() {
+  const s = await api('/api/settings');
+  document.querySelectorAll('[data-k]').forEach(el => {
+    const v = s[el.dataset.k];
+    el.value = el.dataset.type === 'list' ? (v || []).join(', ') : v;
+  });
+  document.querySelectorAll('#protoChecks input').forEach(c => c.checked = s.allowed_protocols.includes(c.value));
+  $('judges').value = s.judges.map(j => `${j.type} ${j.url}`).join('\n');
+  $('setErr').textContent = '';
+}
+async function saveSettings() {
+  const data = {};
+  document.querySelectorAll('[data-k]').forEach(el => {
+    const k = el.dataset.k;
+    data[k] = el.dataset.type === 'list' ? el.value : (el.type === 'number' ? Number(el.value) : el.value);
+  });
+  data.allowed_protocols = [...document.querySelectorAll('#protoChecks input:checked')].map(c => c.value);
+  data.judges = $('judges').value.split('\n').map(l => l.trim()).filter(Boolean).map(l => { const [type, url] = l.split(/\s+/); return { type, url }; });
+  try { await api('/api/settings', { method: 'POST', body: JSON.stringify(data) }); $('setErr').textContent = ''; toast('Einstellungen gespeichert'); }
+  catch (e) { $('setErr').textContent = Object.entries(e.data?.errors || {}).map(([k, v]) => `${k}: ${v}`).join(' · ') || e.message; }
+}
+
+// Log
+async function loadLog() {
+  const rows = await api('/api/log');
+  $('lBody').innerHTML = rows.map(r => `<tr>
+    <td>${new Date(r.ts * 1000).toLocaleTimeString('de-DE')}</td>
+    <td class="mono">${esc(r.client)}</td><td>${esc(r.method)}</td>
+    <td class="wrap mono" style="max-width:340px">${esc(r.target)}</td>
+    <td class="mono">${esc(r.proxy || '–')}</td>
+    <td>${r.country ? flag(r.country) + ' ' + esc(r.country) : '–'}</td>
+    <td>${r.attempts}</td><td>${r.ms ?? '–'} ms</td>
+    <td>${bytes(r.up)} / ${bytes(r.down)}</td>
+    <td><span class="badge b-${r.result}">${({ ok: 'ok', fail: 'Fehler', no_proxy: 'kein Proxy' })[r.result]}</span></td>
+  </tr>`).join('') || '<tr><td colspan="10" class="hint">Noch keine Anfragen.</td></tr>';
+}
+
+loadStats();
+setInterval(() => { if (document.hidden) return; if (current === 'overview') loadStats(); else if (current === 'log') loadLog(); }, 5000);
+window.addEventListener('resize', () => lastStats && chart(lastStats.traffic.series));
+</script>
+</body>
+</html>
