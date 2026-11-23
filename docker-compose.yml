@@ -1,0 +1,18 @@
+services:
+  proxy-rotator:
+    build: .
+    container_name: proxy-rotator
+    restart: unless-stopped
+    environment:
+      DASHBOARD_PASSWORD: "bitte-aendern"   # leer lassen = wird generiert und geloggt
+      PROXY_PASSWORD: ""                    # gesetzt = Proxy verlangt Login (empfohlen, wenn im LAN erreichbar)
+      LOG_LEVEL: INFO
+    ports:
+      # Proxy nur lokal. Für das LAN z. B. "173.1.1.2:8080:8080" (dann PROXY_PASSWORD setzen!)
+      - "127.0.0.1:8080:8080"   # HTTP/HTTPS-Proxy
+      - "173.1.1.2:8000:8000"   # Dashboard im Netzwerk
+    volumes:
+      - proxy-data:/data
+
+volumes:
+  proxy-data:
